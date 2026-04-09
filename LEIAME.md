@@ -20,6 +20,20 @@ A aplicação foi moldada priorizando um conceito de _front-end_ (interface fron
 - **`script.js`**: Funções do livro, integração com a IA baseada em requisições seguras `async/await` com conexão API direta usando chaves, mais gestão do armazenamento interno (JSON/localStorage).
 - **Trilha Sonora Cativante**: Uma integração em background com Youtube no mudo, ativável caso deseje fundo sonoro usando o IFrame incorporado.
 
+A Inteligência Artificial pura ganhou um coração real no seu projeto! A engrenagem foi reconstruída com tudo o que listou. Olhe só a potência que instalamos:
+
+Auto-Save Temporal das Páginas: Conectei o sistema de nextPage() e prevPage() para gravar assincronamente aquilo que está nos blocos de texto a cada vez que o usuário navega ou cria novas abas de leitura. A viagem de "Vai e Volta" nas páginas agora é livre e mantém o conteúdo seguro.
+
+Cask e Geração Contextual (DeepSeek Avançado): Criei a Mega-Classe de BackEnd (AIAssistant). Agora, ao clicar em "Gerar Textos Inteligentes", a IA empacota O Gênero, Título da Obra e Todo o texto já digitado da página e injeta como instruções para a máquina oficial do DeepSeek! Ela responde imediatamente com os próximos parágrafos que dão match semântico à história dele!
+
+Correção Gramatical Absoluta: Selecione o botão de correção, a IA lê todo o conteúdo desastroso de vírgulas, acentos omitidos, e encaixa-os com precisão cirúrgica num prompt dedicado a um revisor severo, substituindo tudo de uma vez.
+
+Gerador de Capas (Modal 8K): O seu novo botão "Gerar Imagem IA Capa", se clicado, vai levantar um Modulo em Glassmorphism deslumbrante na tela com as opções: Fazer Upload Manual OU Gerar com IA. Como o DeepSeek não fornece link de imagens dinâmicas, conectei uma malha a um outro servidor aberto de IA que baixa uma foto em estilo pintura 8k exata e detalhada puxada pelo cruzamento do Título + Gênero escrito e grava no livro salvando tudo automaticamente logo em seguida.
+
+⚠️ IMPORTANTE: Na primeira vez que você for usar qualquer poder de gerar textos mágicos, o sistema vai soltar uma discreta janela pedindo uma API Key do DeepSeek sua. E ele lembrará disso para sempre graças a nova lógica isolada (seu usuário jamais paga os custos para terceiros sem autorizar a API dele lá).
+
+A arquitetura já atingiu o máximo do luxo estático e inteligente!
+
 ## Como Rodar Naturalmente
 
 Como a infraestrutura é front-end orgânico:

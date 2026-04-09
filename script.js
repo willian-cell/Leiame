@@ -173,7 +173,50 @@ class AuthManager {
 
 
 /* ==========================================================================
-   3. UI E CAROUSEL (HOME MOCK 3D)
+   3. MÁGICA DA PENA FLUTUANTE GEOMÉTRICA (FEATHER CURSOR)
+   ========================================================================== */
+class FeatherCursorEngine {
+    static init() {
+        this.feather = document.querySelector(".creator-visual img");
+        this.visualContainer = document.querySelector(".creator-visual");
+        this.section = document.getElementById("secao-sinopse");
+        
+        if(!this.feather || !this.visualContainer || !this.section) return;
+        
+        this.feather.style.transition = "transform 0.15s ease-out";
+        this.feather.style.willChange = "transform";
+        
+        document.addEventListener("mousemove", (e) => this.track(e.clientX, e.clientY));
+        document.addEventListener("scroll", () => this.track(this.lastX, this.lastY));
+    }
+
+    static track(x, y) {
+        if(x === undefined || y === undefined) return;
+        this.lastX = x; this.lastY = y;
+
+        const contRect = this.visualContainer.getBoundingClientRect();
+        const secRect = this.section.getBoundingClientRect();
+        
+        // Ativa a mágica geométrica a partir do cruzamento do mouse pra baixo das fronteiras superiores
+        if(y >= contRect.top && y <= secRect.bottom + 50) {
+             const tipNaturalX = contRect.left + (contRect.width * 0.28); // Mirando no X do Canto inferior-esquerdo visual
+             const tipNaturalY = contRect.top + (contRect.height * 0.85); // Mirando no Y da ponta de escrita da pena
+
+             let deltaX = x - tipNaturalX;
+             let deltaY = y - tipNaturalY;
+             
+             this.feather.style.animation = "none"; // Congela o floating natural
+             this.feather.style.transform = `translate(${deltaX}px, ${deltaY}px)`; // Arrasta a ponta da imagem pro ponteiro do mouse
+        } else {
+             // Retração suave
+             this.feather.style.transform = "translate(0px, 0px)";
+             this.feather.style.animation = ""; // Restaura o estilo inline de floating CSS original da DOM
+        }
+    }
+}
+
+/* ==========================================================================
+   4. UI E CAROUSEL (HOME MOCK 3D)
    ========================================================================== */
 class UIManager {
     static initObservers() {
@@ -186,13 +229,20 @@ class UIManager {
     static openModal(id) { document.getElementById(id).classList.add('open'); }
     static closeModal(id) { document.getElementById(id).classList.remove('open'); }
 
-    static updateNavGlobalState() {
+    static lastActiveLibraryTab = 'mine';
+
+    static updateNavGlobalState(activeFilter = 'mine') {
         const c = document.getElementById("nav-system-links");
         if (AuthManager.currentUser) {
-            // Req 1: Tryment apenas com primeiro nome
             const primeiroNome = AuthManager.currentUser.name.split(' ')[0];
+            const tsAll = activeFilter === 'all' ? 'border-bottom:1px solid var(--color-gold); padding-bottom:2px;' : '';
+            const tsRead = activeFilter === 'reading' ? 'border-bottom:1px solid var(--color-gold); padding-bottom:2px;' : '';
+            const tsMine = activeFilter === 'mine' ? 'border-bottom:1px solid var(--color-gold); padding-bottom:2px;' : '';
+
             c.innerHTML = `
-                <a href="javascript:UIManager.navigateTo('library')" class="nav-link">Sua Estante</a>
+                <a href="javascript:LibraryManager.renderGrid('all')" class="nav-link" style="font-size:0.85rem; letter-spacing:1px; text-transform:uppercase; ${tsAll}">Todos os Livros</a>
+                <a href="javascript:LibraryManager.renderGrid('reading')" class="nav-link" style="font-size:0.85rem; letter-spacing:1px; text-transform:uppercase; ${tsRead}">Em Leitura</a>
+                <a href="javascript:LibraryManager.renderGrid('mine')" class="nav-link" style="font-size:0.85rem; letter-spacing:1px; text-transform:uppercase; ${tsMine}">Sua Estante</a>
                 <span class="nav-link" style="color:var(--color-gold-base); font-style: italic;">
                     <i class="ph-fill ph-check-seal"></i> Olá, ${primeiroNome}
                 </span>
@@ -212,7 +262,9 @@ class UIManager {
         if(v) { v.classList.add('active'); window.scrollTo({top:0, behavior:'smooth'}); }
         else document.getElementById('view-home').classList.add('active');
 
-        if(viewId === 'library') LibraryManager.renderGrid();
+        if (viewId !== 'home') CarouselManager.stopRotation();
+
+        if(viewId === 'library') LibraryManager.renderGrid(this.lastActiveLibraryTab || 'mine');
         if(viewId === 'home') CarouselManager.buildCoverflow();
     }
     
@@ -223,6 +275,10 @@ class UIManager {
 }
 
 class CarouselManager {
+    static autoRotateTimer = null;
+    static positions = [];
+    static els = [];
+
     static async buildCoverflow() {
         const container = document.getElementById("home-3d-carousel");
         if(!container) return;
@@ -235,44 +291,114 @@ class CarouselManager {
         }
 
         const top = books.slice(0, Math.min(3, books.length));
+        this.els = [];
+        this.positions = [];
+
         top.forEach((b, idx) => {
             const card = document.createElement("div");
-            card.className = "book-card-3d " + (top.length===1 ? "center" : (idx===0?"left":idx===1?"center":"right"));
+            let posClass = top.length === 1 ? "center" : (top.length === 2 ? (idx === 0 ? "left" : "right") : (idx === 0 ? "left" : idx === 1 ? "center" : "right"));
+            this.positions.push(posClass);
+            
+            card.className = "book-card-3d " + posClass;
             card.innerHTML = `<img src="${b.cover}" alt="Capa" onerror="this.src='logos/fundo1_site.jpg'">`;
+            
             card.onclick = () => { if(AuthManager.currentUser) ReaderManager.openBook(b.id); else UIManager.openModal('modal-auth'); };
+            
+            if(top.length >= 3) {
+                card.onmouseenter = () => this.triggerFastRotation();
+                card.onmouseleave = () => this.triggerSlowRotation();
+            }
+
+            this.els.push(card);
             container.appendChild(card);
         });
+
+        if(top.length >= 3) {
+            this.triggerSlowRotation();
+        }
+    }
+
+    static rotate() {
+        if(this.positions.length < 3) return;
+        const last = this.positions.pop();
+        this.positions.unshift(last);
+
+        this.els.forEach((el, i) => {
+            el.className = "book-card-3d " + this.positions[i];
+        });
+    }
+
+    static triggerSlowRotation() {
+        clearInterval(this.autoRotateTimer);
+        this.els.forEach(el => el.style.transition = 'all 1.6s cubic-bezier(0.25, 0.46, 0.45, 0.94)');
+        this.autoRotateTimer = setInterval(() => {
+            this.rotate();
+        }, 2500); 
+    }
+
+    static triggerFastRotation() {
+         clearInterval(this.autoRotateTimer);
+         this.els.forEach(el => el.style.transition = 'all 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94)');
+         this.rotate(); 
+         this.autoRotateTimer = setInterval(() => {
+             this.rotate();
+         }, 600); 
+    }
+
+    static stopRotation() {
+        if(this.autoRotateTimer) clearInterval(this.autoRotateTimer);
     }
 }
 
 /* ==========================================================================
-   4. BIBLIOTECA (VISUALIZAR TODOS E OBRAS DO USUÁRIO)
+   5. BIBLIOTECA (VISUALIZAR TODOS E OBRAS DO USUÁRIO)
    ========================================================================== */
 class LibraryManager {
-    static async renderGrid() {
+    static async renderGrid(filterType = 'mine') {
+        UIManager.lastActiveLibraryTab = filterType;
+        UIManager.updateNavGlobalState(filterType);
+        
+        document.querySelectorAll('.view-section').forEach(v => v.classList.remove('active'));
+        document.getElementById('view-library').classList.add('active');
+
         const c = document.getElementById("library-container");
         const allBooks = await DatabaseManager.getAll("books");
         const allUsers = await DatabaseManager.getAll("users");
+        const progresses = await DatabaseManager.getAll("progress") || [];
         
-        // Req 2 e 4 Lógica
-        let userHasBooks = false;
-        if(AuthManager.currentUser) {
-            userHasBooks = allBooks.some(b => b.author === AuthManager.currentUser.email);
+        const currentUser = AuthManager.currentUser ? AuthManager.currentUser.email : '';
+        if(!currentUser) return;
+
+        let filteredBooks = [];
+        let h1Title = "";
+        let h1Desc = "";
+
+        if (filterType === 'mine') {
+            filteredBooks = allBooks.filter(b => b.author === currentUser);
+            h1Title = "Sua Estante";
+            h1Desc = "Obras guardadas e prontas pra acervo.";
+        } else if (filterType === 'all') {
+            filteredBooks = allBooks;
+            h1Title = "Todos os Livros";
+            h1Desc = "Obras já cadastradas e unidas de todos os visionários.";
+        } else if (filterType === 'reading') {
+            const myProgress = progresses.filter(p => p.sessionKey.startsWith(currentUser + "_") && !p.finished);
+            const readingIds = myProgress.map(p => Number(p.bookId));
+            filteredBooks = allBooks.filter(b => readingIds.includes(b.id));
+            h1Title = "Em Leitura";
+            h1Desc = "Aquilo que você não terminou de ler ainda, mas já começou.";
         }
 
-        const h1Title = userHasBooks ? "O Grande Salão Literário" : "Sua Primeira Obra";
-        const h1Desc = userHasBooks ? "Obras guardadas e prontas pra acervo." : "Crie sua primeira obra aqui e preencha este vazio.";
-
         let gridHtml = ``;
-        if (allBooks.length === 0) {
-            gridHtml = `<p style="color:var(--color-gold-base); font-size:1.2rem; grid-column: 1/-1;">Aqui mostraremos os livros já cadastrados. O acervo mundial está em paz.</p>`;
+        if (filteredBooks.length === 0) {
+            gridHtml = `<p style="color:var(--color-gold-base); font-size:1.2rem; grid-column: 1/-1;">Aqui mostraremos os livros correspondentes. Caso não exista nenhum, aventure-se pelo acervo ou crie sua primeira obra.</p>`;
         } else {
-            allBooks.forEach(b => {
+            filteredBooks.forEach(b => {
                 const u = allUsers.find(user => user.email === b.author);
                 const exactAuthorName = u ? u.name : b.authorName;
 
                 gridHtml += `
-                 <div class="glass-panel" style="padding:1.5rem; text-align:center; cursor:pointer; display:flex; flex-direction:column; justify-content:space-between;" onclick="ReaderManager.openBook(${b.id})">
+                 <div class="glass-panel library-item" style="padding:1.5rem; text-align:center; cursor:pointer; display:flex; flex-direction:column; justify-content:space-between;" onclick="ReaderManager.openBook(${b.id})">
                     <div style="background:#0a0a0a; border-radius:4px; margin-bottom:1.5rem; display:flex; justify-content:center; align-items:center; height:320px; overflow:hidden;">
                         <img src="${b.cover}" style="max-width:100%; max-height:100%; object-fit:contain;" onerror="this.src='logos/fundo1_site.jpg'">
                     </div>
@@ -295,8 +421,12 @@ class LibraryManager {
              <h1 class="font-hero text-gradient" style="font-size: 3rem;">${h1Title}</h1>
              <p style="color: var(--text-secondary); margin-top: 1rem;">${h1Desc}</p>
              
-             <div style="margin-top:2rem; display:flex; gap:1rem; justify-content:center;">
-                 <button class="btn btn-gold" onclick="UIManager.navigateTo('admin')"><i class="ph ph-plus-circle"></i> Criar Livro</button>
+             <div style="margin-top:3rem; display:flex; justify-content:center; gap: 1.5rem; align-items:center; flex-wrap:wrap;">
+                 <button class="btn btn-gold" onclick="UIManager.navigateTo('admin')" style="height: 52px; padding: 0 2rem;"><i class="ph ph-plus-circle"></i> Criar Livro</button>
+                 <div style="position:relative; width: 100%; max-width: 500px;">
+                    <i class="ph ph-magnifying-glass" style="position:absolute; left:1.2rem; top:50%; transform:translateY(-50%); color:var(--color-gold); font-size:1.4rem;"></i>
+                    <input type="text" onkeyup="LibraryManager.filterSearch(this.value)" placeholder="Pesquisar por título, autor, data ou gênero..." style="width:100%; height:52px; border-radius:4px; border:1px solid rgba(212,175,55,0.4); background:rgba(0,0,0,0.6); padding:0 1rem 0 3.5rem; color:white; font-family:var(--font-body); font-size:1.05rem; outline:none; transition:0.3s;" onfocus="this.style.borderColor='var(--color-gold)'" onblur="this.style.borderColor='rgba(212,175,55,0.4)'">
+                 </div>
              </div>
              
              <div id="grid-livros" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 3rem; margin-top: 4rem;">
@@ -305,10 +435,20 @@ class LibraryManager {
          </div>
         `;
     }
+
+    static filterSearch(term) {
+        const lowerTerm = term.toLowerCase().trim();
+        const items = document.querySelectorAll('.library-item');
+        items.forEach(el => {
+            const text = el.innerText.toLowerCase();
+            if (text.includes(lowerTerm)) el.style.display = 'flex';
+            else el.style.display = 'none';
+        });
+    }
 }
 
 /* ==========================================================================
-   5. ADMIN / CRIAÇÃO DE LIVRO
+   6. ADMIN / CRIAÇÃO DE LIVRO
    ========================================================================== */
 class AdminManager {
     static async startAIBook() {
@@ -361,7 +501,64 @@ class AdminManager {
 }
 
 /* ==========================================================================
-   6. EDITOR INLINE E LEITOR MAGICO (Com Inteligência Artificial Simulada)
+   7. MOTOR DE IA (DeepSeek & Gerador de Imagens Integrados)
+   ========================================================================== */
+class AIAssistant {
+    static getApiKey() {
+        let key = localStorage.getItem("DS_API_KEY");
+        if (!key) {
+            key = prompt("Abra os cofres: Insira sua chave definitiva da API DeepSeek para conjurar esta magia.");
+            if (key) localStorage.setItem("DS_API_KEY", key);
+        }
+        return key;
+    }
+
+    static async callDeepSeek(promptMsg, systemMsg) {
+        const key = this.getApiKey();
+        if(!key) return null;
+
+        try {
+            const resp = await fetch("https://api.deepseek.com/chat/completions", {
+                method: "POST",
+                headers: { "Content-Type": "application/json", "Authorization": `Bearer ${key}` },
+                body: JSON.stringify({
+                    model: "deepseek-chat",
+                    messages: [
+                        { role: "system", content: systemMsg },
+                        { role: "user", content: promptMsg }
+                    ],
+                    temperature: 0.8
+                })
+            });
+            const data = await resp.json();
+            if(data.error) throw new Error(data.error.message);
+            return data.choices[0].message.content;
+        } catch(e) {
+            alert("Aura Obscura Detectada (Verifique sua API Key de acesso DeepSeek!): " + e.message);
+            return null;
+        }
+    }
+
+    static async generateText(book, currentText) {
+        const sys = `Você é o maior escritor co-autor fantasma do mundo. O livro que o autor cadastra chama-se '${book.title}' do gênero de ${book.genre}. Seu papel: Continue imediatamente a história parando exatamente do ponto onde o usuário travou, e se estiver vazia inicie o capítulo 1 focado no gênero e título descritos, e nunca perca o tom cinematográfico. Não dê saudações, apenas produza o conteúdo orgânico e continue a história baseando com coerência lógica literária.`;
+        const prmt = `Abaixo a escritura atual deste autor nas páginas.\nContinue a narração a partir daqui:\n\n${currentText}`;
+        return await this.callDeepSeek(prmt, sys);
+    }
+
+    static async correctGrammar(text) {
+        const sys = `Você é o mais frio Roteirista e Professor de Gramática de Língua Portuguesa da academia Real, sua função é capturar erros cruéis: Acentuação, Letras minúsculas e maiúsculas nos lugares equivocados, concordância verbal, gramática maluca e polir até que tudo esteja sublime. NUNCA resuma ou tire o sentido do texto original, mude APENAS a concordância! Retorne puramente e 100% o resultado corrigido final para substituição bruta no editor (sem falar "Aqui está seu texto" ou explicações).`;
+        const prmt = `Corrija isto minúciosamente:\n\n${text}`;
+        return await this.callDeepSeek(prmt, sys);
+    }
+
+    static async generateImageURL(book) {
+        const prmtText = `Epic detailed book cover artwork for a novel styled ${book.genre} named ${book.title}, perfect cinematic lighting, no text, beautiful, pure illustration design 8k octane`;
+        return `https://image.pollinations.ai/prompt/${encodeURIComponent(prmtText)}?width=1000&height=1400&nologo=true`;
+    }
+}
+
+/* ==========================================================================
+   8. EDITOR INLINE E LEITOR MAGICO
    ========================================================================== */
 class ReaderManager {
     static currentBook = null;
@@ -372,11 +569,22 @@ class ReaderManager {
         const b = await DatabaseManager.getItem("books", Number(bookId));
         if(!b) return alert("Livro queimado nas chamas do esquecimento.");
         this.currentBook = b;
-        this.currentPageIndex = 0;
+        
+        const pKey = `${AuthManager.currentUser.email}_${b.id}`;
+        const prog = await DatabaseManager.getItem("progress", pKey);
+        this.currentPageIndex = prog && prog.page !== undefined ? prog.page : 0;
+        
         this.isEditing = forceEdit || (b.author === AuthManager.currentUser.email && b.type === 'ai');
         
         UIManager.navigateTo("reader");
         this.renderPage();
+        this.logProgress();
+    }
+
+    static logProgress() {
+         const pKey = `${AuthManager.currentUser.email}_${this.currentBook.id}`;
+         const isFinished = (this.currentPageIndex >= this.currentBook.pages.length - 1);
+         DatabaseManager.saveItem("progress", { sessionKey: pKey, bookId: this.currentBook.id, page: this.currentPageIndex, finished: isFinished, lastRead: new Date() });
     }
 
     static renderPage() {
@@ -411,70 +619,114 @@ class ReaderManager {
         }
     }
 
+    // PAGINATION
     static nextPage() {
+        this.saveLocalTextMemory(); 
         if (this.currentPageIndex < this.currentBook.pages.length - 1) {
-            this.currentPageIndex++; this.renderPage();
+            this.currentPageIndex++; this.renderPage(); this.logProgress();
         } else if (this.isEditing) {
             this.addNewPage();
         }
     }
     static prevPage() {
+        this.saveLocalTextMemory();
         if (this.currentPageIndex > 0) {
-            this.currentPageIndex--; this.renderPage();
+            this.currentPageIndex--; this.renderPage(); this.logProgress();
         }
     }
 
-    // EDITOR INLINE COMMANDS:
     static addNewPage() {
+        this.saveLocalTextMemory();
         this.currentBook.pages.push("");
         this.currentPageIndex = this.currentBook.pages.length - 1;
         this.renderPage();
+        this.logProgress();
     }
 
     static async saveInlineEdits() {
-        // Pega texto custom e salva
-        const raw = document.getElementById("inline-editor-text").value;
-        this.currentBook.pages[this.currentPageIndex] = raw;
+        this.saveLocalTextMemory();
         await DatabaseManager.saveItem("books", this.currentBook);
-        alert("Encantamentos persistidos no IndexedDB!");
+        alert("Progressões e contornos de magia guardados com sucesso no Banco.");
     }
 
-    static generateAIText() {
+    static generateAIText(event) {
         const area = document.getElementById("inline-editor-text");
-        area.value = "Gerando conexões neurais com os servidores da Inteligência...";
+        const btn = event.currentTarget;
+        const originalContent = btn.innerHTML;
+        btn.innerHTML = `<i class="ph ph-spinner ph-spin"></i> Ocupando as nuvens...`; btn.disabled = true;
         
-        // Simulação Mágica de Backend Gen-AI
-        setTimeout(() => {
-            const suggestions = [
-                "A neblina cortava a floresta densa como se a própria luz do sol tivesse medo de penetrar a mata.",
-                "E foi lá, nas ruínas do império perdido de Andrômeda, que o detetive encontrou o artefato brilhante.",
-                "Seu coração parou por uma fração de segundo. Não havia retorno, apenas o abismo cintilante das fadas à sua frente."
-            ];
-            area.value = "... " + suggestions[Math.floor(Math.random()*suggestions.length)] + " [Continue escrevendo...]";
-        }, 1500);
+        AIAssistant.generateText(this.currentBook, area.value).then(res => {
+            btn.innerHTML = originalContent; btn.disabled = false;
+            if(res) area.value += (area.value ? "\n\n" : "") + res;
+        });
     }
 
-    static correctAIText() {
+    static correctAIText(event) {
         const area = document.getElementById("inline-editor-text");
-        if(area.value.length < 5) return alert("Escreva um pouco para eu corrigir!");
-        const antes = area.value;
-        area.value = "Analisando semântica e gramática (Modo Corretor)...";
-        setTimeout(() => {
-            area.value = antes + "\n\n(A inteligência revisou seu texto. Nenhuma crase ou vírgula escapou de forma irregular! A escrita está limpa e formalizada.)";
-        }, 1000);
+        if(area.value.length < 5) return alert("Escreva algo para poder lapidar as bordas!");
+        
+        const btn = event.currentTarget;
+        const org = btn.innerHTML;
+        btn.innerHTML = `<i class="ph ph-spinner ph-spin"></i> Desconstruindo e Lapidando...`; btn.disabled = true;
+
+        AIAssistant.correctGrammar(area.value).then(res => {
+            btn.innerHTML = org; btn.disabled = false;
+            if(res) area.value = res.trim();
+        });
     }
 
-    static async insertImageAIPage() {
-        alert("A IA forjará uma capa única. Isso substituirá as definições da capa original.");
-        // Mock Gen-Imagem Unsplash source baseada em Genero Histórico/Luxo
-        const genImageLink = `https://source.unsplash.com/random/800x600/?${this.currentBook.genre},luxo,art`;
-        this.currentBook.cover = genImageLink;
-        await DatabaseManager.saveItem("books", this.currentBook);
+    static insertImageAIPage() {
+        this.saveLocalTextMemory();
+        UIManager.openModal("modal-cover-ai");
+        const preview = document.getElementById("cover-ai-preview");
+        if(preview) preview.style.display = "none";
+    }
+
+    static handleCoverUpload(e) {
+        const f = e.target.files[0];
+        if(!f) return;
+        const reader = new FileReader();
+        reader.onload = async (ev) => {
+            this.currentBook.cover = ev.target.result;
+            await this.saveInlineEdits();
+            UIManager.closeModal("modal-cover-ai");
+        };
+        reader.readAsDataURL(f);
+    }
+
+    static async handleCoverAI() {
+        const btn = document.getElementById("btn-cover-ai");
+        const org = btn.innerHTML;
+        btn.innerHTML = `<i class="ph ph-spinner ph-spin"></i> Pintando Ideias...`; btn.disabled = true;
+        
+        const imgUrl = await AIAssistant.generateImageURL(this.currentBook);
+        
+        // Puxa a Imagem na IA e transforma em Base64 pra persistência local
+        try {
+            const resp = await fetch(imgUrl);
+            const blob = await resp.blob();
+            const reader = new FileReader();
+            reader.onload = () => {
+                this.tempCoverAI = reader.result;
+                document.getElementById("cover-ai-img").src = reader.result;
+                document.getElementById("cover-ai-preview").style.display = "block";
+                btn.innerHTML = `<i class="ph-fill ph-magic-wand"></i> Gerar Outra Arte`; btn.disabled = false;
+            };
+            reader.readAsDataURL(blob);
+        } catch(err) {
+            alert("A tinta falhou."); btn.innerHTML = org; btn.disabled = false;
+        }
+    }
+
+    static async acceptCoverAI() {
+        this.currentBook.cover = this.tempCoverAI;
+        await this.saveInlineEdits();
+        UIManager.closeModal("modal-cover-ai");
     }
 }
 
 /* ==========================================================================
-   7. BOOTSTRAP INITIALIZATION
+   9. BOOTSTRAP INITIALIZATION
    ========================================================================== */
 window.onload = async () => {
     document.addEventListener("scroll", () => {
@@ -486,6 +738,7 @@ window.onload = async () => {
     UIManager.initObservers();
     AuthManager.hydrateSession();
     UIManager.updateNavGlobalState();
+    FeatherCursorEngine.init();
 
     try {
         await DatabaseManager.init();
