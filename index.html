@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Leiame | Uma Coleção Atemporal</title>
+
+  <script src="https://unpkg.com/@phosphor-icons/web"></script>
+  <link rel="stylesheet" href="style.css" />
+</head>
+
+<body>
+
+  <!-- App Wrapper para SPA -->
+  <div id="app">
+
+    <!-- Navbar Universal -->
+    <nav class="navbar" id="main-nav">
+      <div class="nav-brand" onclick="navigateTo('home')">
+        <!-- Logo integrando tipografia refinada e imagem -->
+        <span class="font-hero">LEIAME</span>
+      </div>
+
+      <!-- Container Dinâmico de Links (Muda baseado da Sessão JS) -->
+      <div class="nav-links" id="nav-system-links">
+        <!-- Exemplo Carregador Baseado num Usuário Deslogado -->
+      </div>
+    </nav>
+
+    <!-- Pena Global Flutuante Atrás do Layout -->
+    <img src="logos/pena.png" class="feather-decoration-global" alt="" />
+
+    <!-- Container do Router Dinâmico onde Telas Trocam -->
+    <main id="router-view">
+
+      <!-- ========================================== -->
+      <!-- VIEW: HOME / APRESENTAÇÃO HERO             -->
+      <!-- ========================================== -->
+      <section class="view-section active" id="view-home">
+
+        <!-- Hero Cinema -->
+        <div class="hero-wrapper">
+          <div class="absolute-cover hero-bg"></div>
+          <div class="absolute-cover hero-particles"></div>
+
+          <div class="hero-content">
+            <div class="hero-text reveal active">
+              <h1 class="text-gradient">Aproveite o seu<br>Tempo</h1>
+              <p>O apse do controle de literatura impulsionado por Inteligência Artificial. Encontre as joias raras da
+                leitura moderna, cadastre suas próprias histórias e deixe o acervo virtual eternizar a sua mente em um
+                ambiente feito para a imersão completa.</p>
+
+              <div style="display: flex; gap: 1.5rem; align-items: center; margin-top: 2rem;">
+                <button class="btn btn-gold" onclick="openModal('modal-auth')">Adentrar Agora</button>
+                <span class="font-hero" style="color: var(--text-muted); font-size: 0.9rem;">Por: <span
+                    style="color: #fff;">Willian Batista Oliveira</span></span>
+              </div>
+            </div>
+
+            <div class="hero-visuals reveal active" style="transition-delay: 0.2s;">
+              <!-- Coverflow Carousel 3D (Renderizado no Script) -->
+              <div class="carousel-3d" id="home-3d-carousel">
+                <!-- Mocks criados dinamicamente no script.js simulando visualização circular -->
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Sinopse do Criador Detail View -->
+        <div class="creator-section" id="secao-sinopse">
+          <div class="creator-grid">
+            <div class="creator-box glass-panel reveal">
+              <h2 class="font-hero text-gold" style="font-size: 2.5rem; margin-bottom: 2rem;">Sinopse do Criador</h2>
+
+              <p><strong>Willian Batista Oliveira</strong> é um desenvolvedor, educador e entusiasta da tecnologia que
+                acredita profundamente no poder do conhecimento como ferramenta de transformação.</p>
+              <p>Movido por um propósito maior que apenas criar sistemas, Willian idealizou e desenvolveu uma plataforma
+                gratuita de leitura com inteligência artificial, unindo tecnologia, educação e imaginação em um único
+                ambiente digital acessível a todos.</p>
+              <p>A inspiração principal veio de sua filha, <strong class="text-gold">Thayla</strong>. Desejando
+                despertar nela o amor pela leitura, ele decidiu criar algo único: um espaço onde a tecnologia guia
+                histórias de forma envolvente.</p>
+
+              <ul
+                style="list-style: none; margin-top: 2rem; border-left: 2px solid rgba(212,175,55,0.3); padding-left: 1.5rem;">
+                <li style="margin-bottom: 1rem;"><i class="ph-fill ph-check-circle text-gold"></i> Biblioteca
+                  multi-usuário totalmente gratuita.</li>
+                <li style="margin-bottom: 1rem;"><i class="ph-fill ph-check-circle text-gold"></i> Sugestões moldadas
+                  pela mente de uma IA embutida.</li>
+                <li style="margin-bottom: 1rem;"><i class="ph-fill ph-check-circle text-gold"></i> Compartilhamento
+                  global de ideias.</li>
+              </ul>
+            </div>
+            <div class="creator-visual reveal" style="transition-delay: 0.2s; text-align: center;">
+              <img src="logos/pena.png"
+                style="width: 100%; max-width: 300px; mix-blend-mode: screen; filter: drop-shadow(0 20px 40px rgba(212,175,55,0.4)); animation: floating 8s ease-in-out infinite alternate;"
+                alt="">
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ========================================== -->
+      <!-- VIEW: BIBLIOTECA INTERNA                   -->
+      <!-- ========================================== -->
+      <section class="view-section" id="view-library">
+         <div id="library-container">
+             <!-- Vazio, será renderizado totalmente pelo JS via LibraryManager.renderGrid() -->
+         </div>
+      </section>
+
+      <!-- ========================================== -->
+      <!-- VIEW: ADMIN / CONCEBER NOVA OBRA           -->
+      <!-- ========================================== -->
+      <section class="view-section" id="view-admin">
+          <div style="padding: 10rem 4rem 4rem 4rem; max-width: 900px; margin: 0 auto; animation: fade-in-up 0.6s ease-out forwards;">
+             <h1 class="font-hero text-gold" style="font-size: 3rem; margin-bottom: 2rem;">Conceber Nova Obra</h1>
+             <div class="glass-panel" style="padding: 4rem;">
+                 
+                 <div class="form-group">
+                    <label>Título da Obra</label>
+                    <input type="text" id="admin-livro-titulo" class="form-input" style="background: rgba(0,0,0,0.8);" required>
+                 </div>
+                 
+                 <div class="form-group" style="margin-top: 1.5rem;">
+                    <label>Gênero Literário</label>
+                    <select id="admin-livro-genero" class="form-input" style="background: rgba(0,0,0,0.8); cursor:pointer;">
+                        <optgroup label="Ficção (Narrativos / Criativos)">
+                            <option value="Romance">Romance</option>
+                            <option value="Conto">Conto</option>
+                            <option value="Novela">Novela</option>
+                            <option value="Fantasia">Fantasia</option>
+                            <option value="Ficção Científica">Ficção Científica</option>
+                            <option value="Terror">Terror</option>
+                            <option value="Suspense">Suspense</option>
+                            <option value="Mistério">Mistério</option>
+                            <option value="Drama">Drama</option>
+                            <option value="Aventura">Aventura</option>
+                            <option value="Distopia">Distopia</option>
+                            <option value="Utopia">Utopia</option>
+                            <option value="Realismo Mágico">Realismo Mágico</option>
+                            <option value="Ficção Histórica">Ficção Histórica</option>
+                            <option value="Literatura Infantil">Literatura Infantil</option>
+                            <option value="Literatura Juvenil">Literatura Juvenil (Young Adult)</option>
+                            <option value="Romance Policial">Romance Policial</option>
+                            <option value="Romance Erótico">Romance Erótico</option>
+                            <option value="Ficção Psicológica">Ficção Psicológica</option>
+                            <option value="Ficção Filosófica">Ficção Filosófica</option>
+                        </optgroup>
+                        <optgroup label="Não Ficção (Realidade)">
+                            <option value="Biografia">Biografia</option>
+                            <option value="Autobiografia">Autobiografia</option>
+                            <option value="Memórias">Memórias</option>
+                            <option value="Ensaios">Ensaios</option>
+                            <option value="Autoajuda">Autoajuda</option>
+                            <option value="Desenvolvimento Pessoal">Desenvolvimento Pessoal</option>
+                            <option value="Negócios e Empreendedorismo">Negócios e Empreendedorismo</option>
+                            <option value="Educação">Educação</option>
+                            <option value="História">História</option>
+                            <option value="Filosofia">Filosofia</option>
+                            <option value="Sociologia">Sociologia</option>
+                            <option value="Psicologia">Psicologia</option>
+                            <option value="Ciência">Ciência</option>
+                            <option value="Tecnologia">Tecnologia</option>
+                            <option value="Política">Política</option>
+                            <option value="Economia">Economia</option>
+                        </optgroup>
+                        <optgroup label="Técnicos / Educacionais">
+                            <option value="Livro Didático">Livro Didático</option>
+                            <option value="Manual Técnico">Manual Técnico</option>
+                            <option value="Guia Prático">Guia Prático</option>
+                            <option value="Apostila">Apostila</option>
+                            <option value="Livro Acadêmico">Livro Acadêmico</option>
+                            <option value="Pesquisa Científica">Pesquisa Científica</option>
+                        </optgroup>
+                        <optgroup label="Artísticos / Criativos">
+                            <option value="Poesia">Poesia</option>
+                            <option value="Crônicas">Crônicas</option>
+                            <option value="Teatro">Teatro (Roteiros/Peças)</option>
+                            <option value="HQ">Histórias em Quadrinhos (HQ)</option>
+                            <option value="Mangá">Mangá</option>
+                            <option value="Livro Ilustrado">Livro Ilustrado</option>
+                            <option value="Livro Interativo">Livro Interativo</option>
+                        </optgroup>
+                        <option value="Outros">Outros</option>
+                    </select>
+                 </div>
+
+                 <div style="display: flex; gap: 2rem; margin-top: 3rem; flex-wrap: wrap;">
+                     <!-- Modo B: IA / Editor Inline -->
+                     <button class="btn btn-gold" onclick="AdminManager.startAIBook()" style="flex:1;">
+                        <i class="ph-fill ph-magic-wand"></i> Criar com Ajuda da IA
+                     </button>
+                     
+                     <!-- Modo A: Upload Imagens -->
+                     <button class="btn btn-outline" onclick="document.getElementById('admin-upload-files').click()" style="flex:1;">
+                        <i class="ph ph-upload-simple"></i> Enviar Páginas (Em Lote)
+                     </button>
+                     <input type="file" id="admin-upload-files" accept="image/*" multiple style="display: none;" onchange="AdminManager.processImageUpload(event)">
+                 </div>
+                 
+                 <p style="margin-top: 2rem; text-align: center; color: var(--text-muted); font-size: 0.9rem;">
+                     O sistema gerenciará automaticamente a capa e paginação caso envie imagens. <br>Se usar IA, você será direcionado ao Editor Mágico.
+                 </p>
+             </div>
+          </div>
+      </section>
+
+      <!-- ========================================== -->
+      <!-- VIEW: LEITOR MÁGICO / EDITOR INLINE        -->
+      <!-- ========================================== -->
+      <section class="view-section" id="view-reader">
+          <div class="reader-container" style="max-width: 1200px; margin: 8rem auto 4rem auto; position: relative; animation: fade-in-up 0.6s ease-out forwards;">
+               <div style="display:flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+                    <div>
+                        <h2 id="reader-title" class="font-hero text-gold" style="font-size: 2.2rem; line-height: 1;">Lendo...</h2>
+                        <span id="reader-author" style="color: var(--text-secondary); font-size: 0.9rem;"></span>
+                    </div>
+                    <button class="btn btn-outline" onclick="UIManager.navigateTo('library')">
+                        <i class="ph ph-x"></i> Fechar Livro
+                    </button>
+               </div>
+               
+               <div id="reader-pages-container" class="glass-panel" style="padding: 4rem; min-height: 60vh; display: flex; flex-direction: column; position: relative;">
+                   <!-- Conteúdo da página atual será injetado pelo JS -->
+               </div>
+
+               <div style="display:flex; justify-content: space-between; align-items: center; margin-top: 2rem;">
+                   <button class="btn btn-outline" onclick="ReaderManager.prevPage()">
+                       <i class="ph ph-arrow-left"></i> Anterior
+                   </button>
+                   <span id="reader-page-indicator" style="color: var(--text-gold); font-family: var(--font-hero); font-weight: bold;">Pág 1/1</span>
+                   <button class="btn btn-outline" onclick="ReaderManager.nextPage()">
+                       Próxima <i class="ph ph-arrow-right"></i>
+                   </button>
+               </div>
+          </div>
+      </section>
+
+      <!-- ========================================== -->
+      <!-- VIEW: POLÍTICA DE PRIVACIDADE              -->
+      <!-- ========================================== -->
+      <section class="view-section" id="view-politica-privacidade">
+        <div class="glass-panel" style="margin: 8rem auto 4rem auto; max-width: 900px; padding: 4rem;">
+          <h1 class="font-hero text-gold" style="font-size: 2.5rem; margin-bottom: 2rem;">Política de Privacidade</h1>
+          <div style="color: var(--text-secondary); line-height: 1.8;">
+            <p style="margin-bottom: 1rem;">Nós valorizamos rigorosamente a sua privacidade. Todas as informações
+              coletadas no ambiente de luxo <strong>Leiame</strong>, sejam de natureza autoral, descritiva ou
+              progressos, são retidas com máxima segurança baseada na arquitetura local (IndexedDB).</p>
+            <p style="margin-bottom: 1rem;">O software foi construído sob uma engenharia baseada no seu dispositivo.
+              Portanto, logs analíticos, preferenciais do usuário associados a respostas da IA são salvos e despachados
+              sem revenda de escopo, garantindo a tranquilidade imersiva para o leitor.</p>
+            <p>Ao desbravar nosso conteúdo, a paz intelectual é sempre uma prioridade nativa.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ========================================== -->
+      <!-- VIEW: TERMOS E CONDIÇÕES                   -->
+      <!-- ========================================== -->
+      <section class="view-section" id="view-termos-condicoes">
+        <div class="glass-panel" style="margin: 8rem auto 4rem auto; max-width: 900px; padding: 4rem;">
+          <h1 class="font-hero text-gold" style="font-size: 2.5rem; margin-bottom: 2rem;">Termos e Condições</h1>
+          <div style="color: var(--text-secondary); line-height: 1.8;">
+            <p style="margin-bottom: 1rem;">Ao utilizar a plataforma literária <strong>Leiame</strong>, o usuário aceita
+              plenamente que se trata de uma obra arquitetônica com intuitos majoritariamente de fomento educacional e
+              apreciação da arte.</p>
+            <p style="margin-bottom: 1rem;">O ambiente prega uma evolução interpessoal alinhada com as inspirações de
+              seu criador original, que construiu esta morada motivado por valores familiares com bases na pequena
+              Thayla. Assim sendo, o respeito por autores anexados nesta base global é uma cláusula fundamental do uso
+              mútuo.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ========================================== -->
+      <!-- VIEW: PRIVACIDADE DE COOKIES               -->
+      <!-- ========================================== -->
+      <section class="view-section" id="view-privacidade-cookies">
+        <div class="glass-panel" style="margin: 8rem auto 4rem auto; max-width: 900px; padding: 4rem;">
+          <h1 class="font-hero text-gold" style="font-size: 2.5rem; margin-bottom: 2rem;">Privacidade de Cookies</h1>
+          <div style="color: var(--text-secondary); line-height: 1.8;">
+            <p style="margin-bottom: 1rem;">Nós não exploramos a intrusão. Os motores internos utilizam <strong>Cookies
+                Técnicos Básicos</strong> e o cofre profundo `Local Storage` somente para manter o cofre da sua chave de
+              entrada selado.</p>
+            <p>Ao realizar manipulações dentro do SPA (Single Page Application), tudo orbita ao redor da persistência
+              dos seus próprios livros anexando dados necessários temporalmente para renderizações instantâneas. Nada
+              aqui rastreia sua propaganda externa.</p>
+          </div>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- Footer Padrão e Único -->
+    <footer class="footer-lux">
+      <div class="footer-grid">
+        <div class="footer-col">
+          <h4 class="font-hero">LEIAME</h4>
+          <p style="color: var(--text-secondary); line-height: 1.8; font-size: 0.9rem;">
+            Tecnologia, educação e imaginação unidas por uma inteligência artificial em uma biblioteca única.
+          </p>
+        </div>
+        <div class="footer-col">
+          <h4>Legislação</h4>
+          <ul>
+            <li><a href="javascript:navigateTo('politica-privacidade')">Política de Privacidade</a></li>
+            <li><a href="javascript:navigateTo('termos-condicoes')">Termos e Condições</a></li>
+            <li><a href="javascript:navigateTo('privacidade-cookies')">Privacidade de Cookies</a></li>
+          </ul>
+        </div>
+        <div class="footer-col">
+          <h4>Acesso Direto</h4>
+          <ul>
+            <li><a href="#" style="display: flex; align-items: center; gap: 0.5rem;"><i
+                  class="ph ph-whatsapp-logo text-gold"></i> 61 98622-1356</a></li>
+            <li><a href="#" style="display: flex; align-items: center; gap: 0.5rem;"><i
+                  class="ph ph-envelope text-gold"></i> willianb.o.1993@gmail.com</a></li>
+          </ul>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <p>&copy; 2026 Leiame Biblioteca Virtual. Criado por Willian Batista.</p>
+      </div>
+    </footer>
+  </div>
+
+  <!-- Sistema Multi-Modais Global (Sobrepõe Tudo) -->
+  <div id="modal-system">
+
+    <!-- Modal Centralizado: Autenticação Multi-usuários -->
+    <div class="modal-overlay" id="modal-auth">
+      <div class="modal-box glass-panel">
+        <button class="modal-close" onclick="closeModal('modal-auth')"><i class="ph ph-x"></i></button>
+
+        <div style="text-align: center; margin-bottom: 2rem;">
+          <i class="ph-fill ph-book-open text-gold" style="font-size: 3rem; margin-bottom: 1rem;"></i>
+          <h2 class="font-hero text-gold" style="font-size: 1.8rem;" id="auth-title">Acessar Reservatório</h2>
+          <p style="color: var(--text-secondary); font-size: 0.9rem;" id="auth-subtitle">Crie ou informe sua conta para
+            abrir o sistema mágico.</p>
+        </div>
+
+        <!-- Lógica combinada simulando um Login/Register -->
+        <form id="form-auth" onsubmit="event.preventDefault(); AuthManager.processAuth();">
+          <div class="form-group" id="group-name" style="display: none;">
+            <label>Como Gostaria de Ser Chamado?</label>
+            <input type="text" class="form-input" id="auth-name" placeholder="Ex: Machado de Assis">
+          </div>
+          <div class="form-group">
+            <label>Email de Leito</label>
+            <input type="email" class="form-input" id="auth-email" required placeholder="seu@email.com">
+          </div>
+          <div class="form-group">
+            <label>Chave de Acesso (Senha)</label>
+            <input type="password" class="form-input" id="auth-password" required placeholder="••••••••">
+          </div>
+
+          <button type="submit" class="btn btn-gold" style="width: 100%; margin-top: 1rem;" id="btn-auth-submit">Entrar
+            no Banco</button>
+
+          <div style="text-align: center; margin-top: 1.5rem; font-size: 0.85rem; color: var(--text-muted);">
+            <a href="#" onclick="AuthManager.toggleMode()" id="auth-switch-text"
+              style="color: var(--text-gold); text-decoration: none;">Ainda não sou de casa. Criar nova conta!</a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- O script motor que rege as regras de classes e roteamento virá do script.js -->
+  <script src="script.js"></script>
+</body>
+
+</html>
