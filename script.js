@@ -539,20 +539,34 @@ class AIAssistant {
         }
     }
 
-    static async generateText(book, currentText) {
-        const sys = `Você é o maior escritor co-autor fantasma do mundo. O livro que o autor cadastra chama-se '${book.title}' do gênero de ${book.genre}. Seu papel: Continue imediatamente a história parando exatamente do ponto onde o usuário travou, e se estiver vazia inicie o capítulo 1 focado no gênero e título descritos, e nunca perca o tom cinematográfico. Não dê saudações, apenas produza o conteúdo orgânico e continue a história baseando com coerência lógica literária.`;
-        const prmt = `Abaixo a escritura atual deste autor nas páginas.\nContinue a narração a partir daqui:\n\n${currentText}`;
+    static async generateText(book, currentText, memoryArr = [], whisper = "") {
+        const sys = `Você é o maior escritor co-autor fantasma do mundo. O livro chama-se '${book.title}' (Gênero: ${book.genre}). 
+Seu papel: Continue imediatamente a história mantendo continuidade lógica com o contexto passado, sem repetições, usando tom cinematográfico. Nunca dê saudações, não pule linhas desnecessárias, apenas continue focado.`;
+        
+        let contextBlock = memoryArr.length > 0 ? `[CONTEXTO DE HISTÓRICO PASSADO PARA NÃO SE PERDER]:\n${memoryArr.join("\n---\n")}\n\n` : "";
+        let whisperBlock = whisper.trim() !== "" ? `\n[DIREÇÃO DO AUTOR DEVE SER SEGUIDA RIGOROSAMENTE]:\nA história daqui pra frente deve rumar para: "${whisper}"\n` : "";
+        
+        const prmt = `${contextBlock}Abaixo a escritura crua ATUAL deste autor na página viva.\nContinue a narração ESPECIFICAMENTE a partir DESTA última sílaba:${whisperBlock}\n\n[PÁGINA ATUAL QUE ESTÁ SENDO CONTINUADA]:\n${currentText}`;
         return await this.callDeepSeek(prmt, sys);
     }
 
     static async correctGrammar(text) {
-        const sys = `Você é o mais frio Roteirista e Professor de Gramática de Língua Portuguesa da academia Real, sua função é capturar erros cruéis: Acentuação, Letras minúsculas e maiúsculas nos lugares equivocados, concordância verbal, gramática maluca e polir até que tudo esteja sublime. NUNCA resuma ou tire o sentido do texto original, mude APENAS a concordância! Retorne puramente e 100% o resultado corrigido final para substituição bruta no editor (sem falar "Aqui está seu texto" ou explicações).`;
-        const prmt = `Corrija isto minúciosamente:\n\n${text}`;
+        const sys = `Você é o mais frio Roteirista de Gramática. Função: capturar erros de acentuação e concordância e polir.
+<CRITICAL_WARNING> NUNCA remova ou altere as Quebras de Linha, parágrafos, espaços ou formatações Markdown originais do autor. Preserve a estrutura dimensional 100% intacta, altere apenas verbos e letras! </CRITICAL_WARNING>
+Retorne PURAMENTE o resultado (sem falar "Aqui está seu texto").`;
+        const prmt = `Corrija isto minúciosamente preservando espaços originais:\n\n${text}`;
         return await this.callDeepSeek(prmt, sys);
     }
 
-    static async generateImageURL(book) {
-        const prmtText = `Epic detailed book cover artwork for a novel styled ${book.genre} named ${book.title}, perfect cinematic lighting, no text, beautiful, pure illustration design 8k octane`;
+    static async generateImageURL(book, contextPage = "") {
+        let prmtText = `Epic detailed artwork for a novel styled ${book.genre} named ${book.title}, perfect cinematic lighting, no text, beautiful illustration design 8k octane`;
+        
+        if (contextPage && contextPage.trim() !== "") {
+             const sysVis = `Você é um diretor de arte gerador de Prompts ultra realistas para IA Imagens. Lê a cena atual e cospe APENAS UM PROMPT MISTO EM INGLÊS DIRETO DE 1 PARÁGRAFO fotorealista baseando-se nela. Imprima só as keys. A ação é esta:`;
+             const gPrompt = await this.callDeepSeek("Traduza para Prompt em inglês e resuma esta cena visual:\n" + contextPage, sysVis);
+             if (gPrompt) prmtText = gPrompt.trim() + ", 8k resolution, cinematic lighting, masterpiece, no text";
+        }
+
         return `https://image.pollinations.ai/prompt/${encodeURIComponent(prmtText)}?width=1000&height=1400&nologo=true`;
     }
 }
@@ -574,11 +588,50 @@ class ReaderManager {
         const prog = await DatabaseManager.getItem("progress", pKey);
         this.currentPageIndex = prog && prog.page !== undefined ? prog.page : 0;
         
-        this.isEditing = forceEdit || (b.author === AuthManager.currentUser.email && b.type === 'ai');
+        // Separação de Modos: Abre como Leitura por Padrão para não assustar com Módulos IA Ativos.
+        this.isEditing = forceEdit;
         
         UIManager.navigateTo("reader");
+        this.renderTopControls();
         this.renderPage();
         this.logProgress();
+    }
+
+    static toggleEditing() {
+        this.isEditing = !this.isEditing;
+        this.renderTopControls();
+        this.renderPage();
+    }
+
+    static deleteCurrentBook() {
+        if(confirm("Atirar este livro ao fogo do esquecimento eternamente?")) {
+            DatabaseManager.deleteItem("books", this.currentBook.id).then(() => {
+                UIManager.navigateTo('library');
+            });
+        }
+    }
+
+    static renderTopControls() {
+        const c = document.getElementById("reader-top-controls");
+        if(!c) return;
+
+        const isOwner = this.currentBook.author === AuthManager.currentUser.email;
+
+        let html = ``;
+        if (isOwner) {
+             const editBtnText = this.isEditing ? `<i class="ph ph-eye"></i> Voltar à Leitura` : `<i class="ph ph-pencil-simple"></i> Editar Obra`;
+             html += `
+                 <button class="btn btn-outline" style="color:#d93025; border-color:rgba(217,48,37,0.4);" onclick="ReaderManager.deleteCurrentBook()"><i class="ph ph-trash"></i> Excluir Obra</button>
+                 <button class="btn btn-gold" onclick="ReaderManager.toggleEditing()">${editBtnText}</button>
+             `;
+        }
+
+        html += `
+            <button class="btn btn-outline" onclick="UIManager.navigateTo('library')">
+                <i class="ph ph-x"></i> Fechar Livro
+            </button>
+        `;
+        c.innerHTML = html;
     }
 
     static logProgress() {
@@ -601,14 +654,18 @@ class ReaderManager {
             if(this.isEditing) {
                 // Modo Edição Plena via IA
                 c.innerHTML = `
-                    <div style="display:flex; gap:1rem; margin-bottom: 2rem; border-bottom: 1px solid rgba(212,175,55,0.2); padding-bottom: 1rem;">
-                       <button class="btn btn-outline" style="padding:0.4rem 1rem; font-size:0.8rem;" onclick="ReaderManager.generateAIText()"><i class="ph-fill ph-magic-wand"></i> Gerar Textos IA</button>
-                       <button class="btn btn-outline" style="padding:0.4rem 1rem; font-size:0.8rem;" onclick="ReaderManager.correctAIText()"><i class="ph ph-check-square"></i> Correção/Gramática IA</button>
-                       <button class="btn btn-outline" style="padding:0.4rem 1rem; font-size:0.8rem;" onclick="ReaderManager.insertImageAIPage()"><i class="ph ph-image"></i> Gerar Imagem IA Capa</button>
-                       
-                       <div style="flex:1"></div>
-                       <button class="btn btn-gold" style="padding:0.4rem 1rem; font-size:0.8rem;" onclick="ReaderManager.saveInlineEdits()"><i class="ph ph-floppy-disk"></i> Salvar Edições DB</button>
-                       <button class="btn btn-outline" style="padding:0.4rem 1rem; font-size:0.8rem;" onclick="ReaderManager.addNewPage()"><i class="ph ph-plus"></i> Add Nova Pág</button>
+                    <div style="display:flex; flex-direction:column; gap:1rem; margin-bottom: 2rem; border-bottom: 1px solid rgba(212,175,55,0.2); padding-bottom: 1rem;">
+                        <input type="text" id="ai-whisper-input" placeholder="Sussurre direcionamentos misteriosos para a história continuar ou descreva a capa... (Opcional)" style="width:100%; border-radius:4px; border:1px solid rgba(212,175,55,0.4); background:rgba(0,0,0,0.5); padding:1rem; color:white; outline:none; transition:0.3s; font-size: 0.95rem; font-family:var(--font-body);" onfocus="this.style.borderColor='var(--color-gold)'" onblur="this.style.borderColor='rgba(212,175,55,0.4)'">
+                        
+                        <div style="display:flex; gap:1rem; flex-wrap:wrap;">
+                           <button class="btn btn-outline" style="padding:0.4rem 1rem; font-size:0.8rem;" id="btn-generate-text" onclick="ReaderManager.generateAIText(event)"><i class="ph-fill ph-magic-wand"></i> Auto-Escrita IA</button>
+                           <button class="btn btn-outline" style="padding:0.4rem 1rem; font-size:0.8rem;" onclick="ReaderManager.correctAIText(event)"><i class="ph ph-check-square"></i> Lapidar Gramática</button>
+                           <button class="btn btn-outline" style="padding:0.4rem 1rem; font-size:0.8rem;" onclick="ReaderManager.insertImageAIPage()"><i class="ph ph-image"></i> Forjar Capa IA</button>
+                           
+                           <div style="flex:1"></div>
+                           <button class="btn btn-gold" style="padding:0.4rem 1rem; font-size:0.8rem;" onclick="ReaderManager.saveInlineEdits()"><i class="ph ph-floppy-disk"></i> Salvar Livro</button>
+                           <button class="btn btn-outline" style="padding:0.4rem 1rem; font-size:0.8rem;" onclick="ReaderManager.addNewPage()"><i class="ph ph-plus"></i> Novas Páginas</button>
+                        </div>
                     </div>
                     <!-- Editor de Texto -->
                     <textarea id="inline-editor-text" style="width:100%; flex:1; background:transparent; color:#fff; border:none; font-size:1.1rem; line-height:2; resize:none; font-family:var(--font-body);" placeholder="Comece a ditar ou deixe a magia escrever...">${content}</textarea>
@@ -656,15 +713,41 @@ class ReaderManager {
         alert("Progressões e contornos de magia guardados com sucesso no Banco.");
     }
 
+    static typewriterInterval = null;
+
     static generateAIText(event) {
         const area = document.getElementById("inline-editor-text");
-        const btn = event.currentTarget;
-        const originalContent = btn.innerHTML;
-        btn.innerHTML = `<i class="ph ph-spinner ph-spin"></i> Ocupando as nuvens...`; btn.disabled = true;
+        const btn = event.currentTarget || document.getElementById("btn-generate-text");
+        const whisperInput = document.getElementById("ai-whisper-input");
+        if(!area) return;
         
-        AIAssistant.generateText(this.currentBook, area.value).then(res => {
-            btn.innerHTML = originalContent; btn.disabled = false;
-            if(res) area.value += (area.value ? "\n\n" : "") + res;
+        const originalContent = btn.innerHTML;
+        btn.innerHTML = `<i class="ph ph-spinner ph-spin"></i> Transcendendo...`; 
+        btn.disabled = true;
+
+        const currentWordData = area.value;
+        const memoryContext = this.currentBook.pages.slice(Math.max(0, this.currentPageIndex - 3), this.currentPageIndex);
+        const whisperCommand = whisperInput ? whisperInput.value : "";
+        
+        AIAssistant.generateText(this.currentBook, currentWordData, memoryContext, whisperCommand).then(newPart => {
+            btn.innerHTML = originalContent; 
+            btn.disabled = false;
+            
+            if(newPart) {
+                if(this.typewriterInterval) clearInterval(this.typewriterInterval);
+                if(currentWordData.length > 0 && !currentWordData.endsWith(' ') && !currentWordData.endsWith('\n')) area.value += " \n";
+                
+                let charIndex = 0;
+                this.typewriterInterval = setInterval(() => {
+                    area.value += newPart.charAt(charIndex);
+                    area.scrollTop = area.scrollHeight;
+                    charIndex++;
+                    if(charIndex >= newPart.length) {
+                         clearInterval(this.typewriterInterval);
+                         this.saveLocalTextMemory();
+                    }
+                }, 10);
+            }
         });
     }
 
@@ -674,11 +757,14 @@ class ReaderManager {
         
         const btn = event.currentTarget;
         const org = btn.innerHTML;
-        btn.innerHTML = `<i class="ph ph-spinner ph-spin"></i> Desconstruindo e Lapidando...`; btn.disabled = true;
+        btn.innerHTML = `<i class="ph ph-spinner ph-spin"></i> Lapidando...`; btn.disabled = true;
 
         AIAssistant.correctGrammar(area.value).then(res => {
             btn.innerHTML = org; btn.disabled = false;
-            if(res) area.value = res.trim();
+            if(res) {
+                area.value = res.trim();
+                this.saveLocalTextMemory();
+            }
         });
     }
 
@@ -706,7 +792,13 @@ class ReaderManager {
         const org = btn.innerHTML;
         btn.innerHTML = `<i class="ph ph-spinner ph-spin"></i> Pintando Ideias...`; btn.disabled = true;
         
-        const imgUrl = await AIAssistant.generateImageURL(this.currentBook);
+        let contextContent = "";
+        const whisperInput = document.getElementById("ai-whisper-input");
+        const editorContent = document.getElementById("inline-editor-text");
+        if(whisperInput && whisperInput.value) contextContent += "Sussurro do Autor sobre como a cena ocorre: " + whisperInput.value + "\n\n";
+        if(editorContent && editorContent.value) contextContent += "Página do Livro Atual (Ignore textos avulsos, foque no ambiente visível): " + editorContent.value;
+
+        const imgUrl = await AIAssistant.generateImageURL(this.currentBook, contextContent);
         
         // Puxa a Imagem na IA e transforma em Base64 pra persistência local
         try {
