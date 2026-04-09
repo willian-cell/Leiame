@@ -1,0 +1,34 @@
+{
+  "users": [
+    {
+      "email": "willianb.o.1993@gmail.com",
+      "name": "Willian Batista Oliveira",
+      "password": "c2VuaGFfbW9jaw==", 
+      "role": "admin",
+      "createdAt": "2026-04-08T20:00:00.000Z"
+    }
+  ],
+  "books": [
+    {
+      "id": 1,
+      "title": "Aventura de Lúcia",
+      "genre": "Fantasia",
+      "type": "ai",
+      "author": "willianb.o.1993@gmail.com",
+      "authorName": "Willian Batista Oliveira",
+      "cover": "imagens/1.png",
+      "pages": [
+        "Capítulo 1\n\nLúcia encontrou um misterioso livro falante na estante do avô, que a transportou para um reino feito de palavras soltas. O grande percurso então havia começado."
+      ],
+      "createdAt": "2026-04-08T20:05:00.000Z"
+    }
+  ],
+  "progress": [
+    {
+      "sessionKey": "willianb.o.1993@gmail.com_book1",
+      "currentPageIndex": 0,
+      "lastRead": "2026-04-08T21:00:00.000Z"
+    }
+  ],
+  "exportDate": "2026-04-08T21:50:00.000Z"
+}

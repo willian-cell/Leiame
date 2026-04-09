@@ -34,7 +34,10 @@ class DatabaseManager {
     static saveItem(storeName, data) {
         return new Promise((resolve, reject) => {
             const req = this.db.transaction([storeName], "readwrite").objectStore(storeName).put(data);
-            req.onsuccess = () => resolve(req.result);
+            req.onsuccess = () => {
+                resolve(req.result);
+                this.syncToFileBase(); // Chama a sincronização silenciosa automaticamente
+            };
             req.onerror = () => reject(req.error);
         });
     }
@@ -55,7 +58,7 @@ class DatabaseManager {
         });
     }
 
-    // BACKUP EM ARQUIVO .JSON
+    // EXPORTAÇÃO BÁSICA
     static async exportToJSON() {
         const users = await this.getAll("users");
         const books = await this.getAll("books");
@@ -68,6 +71,35 @@ class DatabaseManager {
         a.download = `leiame_database_bkp_${new Date().getTime()}.json`;
         a.click();
         alert("Sistema inteiro empacotado em JSON com sucesso!");
+    }
+
+    // REGISTRO DINÂMICO PERMANENTE ("AUTO-SAVE") DIRETO NO ARQUIVO .JSON DA MÁQUINA
+    static fileHandle = null;
+
+    static async linkJSONFile() {
+        try {
+            this.fileHandle = await window.showSaveFilePicker({
+                suggestedName: 'leiame_database_autosalvamento.json',
+                types: [{ description: 'Arquivo de Banco JSON', accept: { 'application/json': ['.json'] } }]
+            });
+            alert("Sistema vinculado com sucesso! As próximas edições e leituras vão sobrescrever o arquivo automaticamente.");
+            this.syncToFileBase();
+        } catch(e) { console.log("Vinculação cancelada", e); }
+    }
+
+    static async syncToFileBase() {
+        if (!this.fileHandle) return; // Se não houver arquivo real linkado na sessão, opera normal.
+        try {
+            const users = await this.getAll("users");
+            const books = await this.getAll("books");
+            const progress = await this.getAll("progress");
+            const backup = { users, books, progress, timestamp: new Date().toISOString(), type: "Auto-Gravação Permanente" };
+            
+            const writable = await this.fileHandle.createWritable();
+            await writable.write(JSON.stringify(backup, null, 2));
+            await writable.close();
+            console.log("Arquivo JSON real sobrescrito nativamente no computador com sucesso.");
+        } catch(e) { console.error("Falha ao injetar dados no arquivo permanente da máquina", e); }
     }
 }
 
@@ -220,6 +252,7 @@ class LibraryManager {
     static async renderGrid() {
         const c = document.getElementById("library-container");
         const allBooks = await DatabaseManager.getAll("books");
+        const allUsers = await DatabaseManager.getAll("users");
         
         // Req 2 e 4 Lógica
         let userHasBooks = false;
@@ -235,12 +268,23 @@ class LibraryManager {
             gridHtml = `<p style="color:var(--color-gold-base); font-size:1.2rem; grid-column: 1/-1;">Aqui mostraremos os livros já cadastrados. O acervo mundial está em paz.</p>`;
         } else {
             allBooks.forEach(b => {
+                const u = allUsers.find(user => user.email === b.author);
+                const exactAuthorName = u ? u.name : b.authorName;
+
                 gridHtml += `
-                 <div class="glass-panel" style="padding:1.5rem; text-align:left; cursor:pointer;" onclick="ReaderManager.openBook(${b.id})">
-                    <img src="${b.cover}" style="width:100%; height:250px; object-fit:cover; border-radius:4px; margin-bottom:1rem;" onerror="this.src='logos/fundo1_site.jpg'">
-                    <h3 class="font-hero text-gold" style="font-size:1.3rem;">${b.title}</h3>
-                    <p style="color:var(--text-secondary); font-size:0.85rem; margin-bottom:0.5rem;">${b.genre} • Por: ${b.authorName}</p>
-                    ${b.type === 'ai' ? '<span class="nav-badge" style="background:#5522aa; color:#fff;">✨ Gerado por IA</span>' : ''}
+                 <div class="glass-panel" style="padding:1.5rem; text-align:center; cursor:pointer; display:flex; flex-direction:column; justify-content:space-between;" onclick="ReaderManager.openBook(${b.id})">
+                    <div style="background:#0a0a0a; border-radius:4px; margin-bottom:1.5rem; display:flex; justify-content:center; align-items:center; height:320px; overflow:hidden;">
+                        <img src="${b.cover}" style="max-width:100%; max-height:100%; object-fit:contain;" onerror="this.src='logos/fundo1_site.jpg'">
+                    </div>
+                    <div>
+                        <h3 class="font-hero text-gold" style="font-size:1.3rem; margin-bottom:0.8rem;">${b.title}</h3>
+                        <div style="display:flex; justify-content:center; gap: 0.5rem; align-items:center; margin-bottom:1rem;">
+                             <span style="background:var(--color-gold-dark); color:#000; padding:0.2rem 0.6rem; border-radius:4px; font-weight:700; font-size:0.75rem; text-transform:uppercase; letter-spacing:1px;">${b.genre}</span>
+                             ${b.type === 'ai' ? '<span class="nav-badge" style="background:#5522aa; color:#fff; font-size:0.7rem; border-radius:4px; padding:0.2rem 0.5rem; margin:0;">✨ IA</span>' : ''}
+                        </div>
+                        <p style="color:#fcfcfc; font-size:0.95rem; font-weight:500; margin-bottom:0.3rem; text-transform:capitalize;"><i class="ph-fill ph-pen-nib"></i> ${exactAuthorName}</p>
+                        <p style="color:var(--text-muted); font-size:0.8rem;"><i class="ph ph-calendar-blank"></i> Publicado em: ${new Date(b.createdAt).toLocaleDateString('pt-BR')}</p>
+                    </div>
                  </div>
                 `;
             });
@@ -251,11 +295,8 @@ class LibraryManager {
              <h1 class="font-hero text-gradient" style="font-size: 3rem;">${h1Title}</h1>
              <p style="color: var(--text-secondary); margin-top: 1rem;">${h1Desc}</p>
              
-             <!-- Req 3: troque anexar novo tomo por Criar Livro -->
              <div style="margin-top:2rem; display:flex; gap:1rem; justify-content:center;">
                  <button class="btn btn-gold" onclick="UIManager.navigateTo('admin')"><i class="ph ph-plus-circle"></i> Criar Livro</button>
-                 <!-- Req Salvar em DB Json Back-up -->
-                 <button class="btn btn-outline" title="Baixar toda database (.json)" onclick="DatabaseManager.exportToJSON()"><i class="ph ph-download-simple"></i> Exportar DB</button>
              </div>
              
              <div id="grid-livros" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 3rem; margin-top: 4rem;">
@@ -279,7 +320,7 @@ class AdminManager {
         
         const b = {
             title, genre, type: 'ai', author: AuthManager.currentUser.email,
-            authorName: AuthManager.currentUser.name.split(' ')[0],
+            authorName: AuthManager.currentUser.name,
             cover: baseCover, pages: ["Insira seu primeiro capítulo aqui..."],
             createdAt: new Date()
         };
@@ -309,7 +350,7 @@ class AdminManager {
         Promise.all(promises).then(async b64Array => {
             const b = {
                 title, genre, type: 'images', author: AuthManager.currentUser.email,
-                authorName: AuthManager.currentUser.name.split(' ')[0], 
+                authorName: AuthManager.currentUser.name, 
                 cover: b64Array[0], pages: b64Array, createdAt: new Date()
             };
             await DatabaseManager.saveItem("books", b);
@@ -334,8 +375,6 @@ class ReaderManager {
         this.currentPageIndex = 0;
         this.isEditing = forceEdit || (b.author === AuthManager.currentUser.email && b.type === 'ai');
         
-        document.getElementById("reader-title").innerText = b.title;
-        document.getElementById("reader-author").innerText = `Escrito por: ${b.authorName}`;
         UIManager.navigateTo("reader");
         this.renderPage();
     }
