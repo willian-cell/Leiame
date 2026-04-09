@@ -619,7 +619,14 @@ class ReaderManager {
         }
     }
 
-    // PAGINATION
+    // EDITOR INLINE COMMANDS & PAGINATION
+    static saveLocalTextMemory() {
+         if(this.isEditing) {
+             const area = document.getElementById("inline-editor-text");
+             if(area) this.currentBook.pages[this.currentPageIndex] = area.value;
+         }
+    }
+
     static nextPage() {
         this.saveLocalTextMemory(); 
         if (this.currentPageIndex < this.currentBook.pages.length - 1) {
